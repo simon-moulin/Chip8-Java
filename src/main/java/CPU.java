@@ -87,9 +87,11 @@ public class CPU {
 
             //operation
 
+            for (int i = 0; i < 4; i++) {
+                interpreterOpcode(recupererOpcode());
+            }
             ecran.paintScreen();
-
-
+            decompter();
             endTime = System.nanoTime();
             waitForCompleteCycle(endTime,initTime);
         } while (true);
@@ -196,12 +198,18 @@ public class CPU {
                 break;
             }
             case 6:{//4XNN saute l'instruction suivante si VX et NN ne sont pas égaux.
-
+                if(V[b3] != (b2<<4+ b1)) {
+                    pc +=2;
+                }
 
                 break;
             }
             case 7:{
                 //5XY0 saute l'instruction suivante si VX et VY sont égaux.
+
+                if(V[b3] == V[b2]) {
+                    pc+=2;
+                }
 
                 break;
             }
@@ -209,11 +217,14 @@ public class CPU {
             case 8:{
                 //6XNN définit VX à NN.
 
+                V[b3] = (byte) ((b2 <<4) + b1);
+
                 break;
             }
             case 9:{
                 //7XNN ajoute NN à VX.
 
+                V[b3] += (b2<< 4) + b1;
 
                 break;
             }
@@ -224,22 +235,25 @@ public class CPU {
             }
             case 11:{
                 //8XY1 définit VX à VX OR VY.
+                V[b3] = (byte) (V[b3] | V[b2]);
 
                 break;
             }
             case 12:{
                 //8XY2 définit VX à VX AND VY.
 
+                V[b3] = (byte) (V[b3] & V[b2]);
                 break;
             }
             case 13:{
                 //8XY3 définit VX à VX XOR VY.
+                V[b3] = (byte) (V[b3] ^ V[b2]);
 
                 break;
             }
             case 14:{
                 //8XY4 ajoute VY à VX. VF est mis à 1 quand il y a un dépassement de mémoire (carry), et à 0 quand il n'y en pas.
-                if((V[b2] + V[b3]) > 0xFF) {
+                if((V[b3] + V[b2]) > 255) {
                     V[0xF] = 1;
                 }else {
                     V[0xF] = 0;
@@ -250,14 +264,23 @@ public class CPU {
             }
             case 15:{
                 //8XY5 VY est soustraite de VX. VF est mis à 0 quand il y a un emprunt, et à 1 quand il n'y a en pas.
-
+                if((V[b3]<V[b2]))
+                {
+                    V[0xF]=0; //cpu.V[15]
+                }
+                else
+                {
+                    V[0xF]=1; //cpu.V[15]
+                }
+                V[b3]-=V[b2];
 
                 break;
             }
             case 16:{
 
                 //8XY6 décale (shift) VX à droite de 1 bit. VF est fixé à la valeur du bit de poids faible de VX avant le décalage.
-
+                V[0xF]= (byte) (V[b3]&(0x01));
+                V[b3]= (byte) (V[b3]>>1);
 
                 break;
             }
@@ -276,7 +299,8 @@ public class CPU {
             }
             case 18:{
                 //8XYE décale (shift) VX à gauche de 1 bit. VF est fixé à la valeur du bit de poids fort de VX avant le décalage.
-
+                V[0xF]= (byte) (V[b3]>>7);
+                V[b3]= (byte) (V[b3]<<1);
 
                 break;
             }
@@ -285,11 +309,15 @@ public class CPU {
 
                 //9XY0 saute l'instruction suivante si VX et VY ne sont pas égaux.
 
+                if(V[b3]!=V[b2])
+                {
+                    pc+=2;
+                }
                 break;
             }
             case 20:{
                 //ANNN affecte NNN à I.
-
+                I = (short) ((b3 << 8) + (b2 << 4) + b1);
 
 
                 break;
@@ -297,7 +325,8 @@ public class CPU {
             case 21:{
                 //BNNN passe à l'adresse NNN + V0.
 
-
+                pc= (short) ((b3<<8)+(b2<<4)+b1+V[0]);
+                pc-=2;
 
                 break;
 
@@ -332,7 +361,7 @@ public class CPU {
 
             case 26:{
                 //FX07 définit VX à la valeur de la temporisation.
-
+                V[b3]=compteurJeu;
 
                 break;
             }
@@ -346,19 +375,27 @@ public class CPU {
 
             case 28:{
                 //FX15 définit la temporisation à VX.
-
+                compteurJeu=V[b3];
 
                 break;
             }
             case 29:{
                 //FX18 définit la minuterie sonore à VX.
-
+                compteurSon=V[b3];
 
                 break;
             }
             case 30:{
                 //FX1E ajoute à VX I. VF est mis à 1 quand il y a overflow (I+VX>0xFFF), et à 0 si tel n'est pas le cas.
-
+                if((I+V[b3])>0xFFF)
+                {
+                    V[0xF]=1;
+                }
+                else
+                {
+                    V[0xF]=0;
+                }
+                I+=V[b3];
 
                 break;
             }
@@ -366,7 +403,7 @@ public class CPU {
             case 31:{
                 //FX29 définit I à l'emplacement du caractère stocké dans VX. Les caractères 0-F (en hexadécimal) sont représentés par une police 4x5.
 
-
+                I= (short) (V[b3]*5);
                 break;
             }
 
@@ -382,13 +419,19 @@ public class CPU {
             case 33:{
 
                 //FX55 stocke V0 à VX en mémoire à partir de l'adresse I.
-
+                for(byte i=0;i<=b3;i++)
+                {
+                    memoire[I+i]=V[i];
+                }
 
                 break;
             }
             case 34:{
                 //FX65 remplit V0 à VX avec les valeurs de la mémoire à partir de l'adresse I.
-
+                for(byte i=0;i<=b3;i++)
+                {
+                    V[i]=memoire[I+i];
+                }
 
 
                 break;
