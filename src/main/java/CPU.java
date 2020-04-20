@@ -1,5 +1,9 @@
 import javax.swing.*;
-import java.util.HashMap;
+import java.io.File;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Random;
 
 public class CPU {
@@ -38,23 +42,23 @@ public class CPU {
     {
         this.memoire[0]= (byte) 0xF0;this.memoire[1]= (byte) 0x90;this.memoire[2]= (byte) 0x90;this.memoire[3]= (byte) 0x90; this.memoire[4]= (byte) 0xF0; // O
 
-        this.memoire[5]=0x20;this.memoire[6]=0x60;this.memoire[7]=0x20;this.memoire[8]=0x20;this.memoire[9]=0x70; // 1
+        this.memoire[5]= (byte)0x20;this.memoire[6]= (byte) 0x60;this.memoire[7]=(byte)0x20;this.memoire[8]= (byte) 0x20;this.memoire[9]= (byte)0x70; // 1
 
-        this.memoire[10]= (byte) 0xF0;this.memoire[11]=0x10;this.memoire[12]= (byte) 0xF0;this.memoire[13]= (byte) 0x80; this.memoire[14]= (byte) 0xF0; // 2
+        this.memoire[10]= (byte) 0xF0;this.memoire[11]= (byte) 0x10;this.memoire[12]= (byte) 0xF0;this.memoire[13]= (byte) 0x80; this.memoire[14]= (byte) 0xF0; // 2
 
-        this.memoire[15]= (byte) 0xF0;this.memoire[16]=0x10;this.memoire[17]= (byte) 0xF0;this.memoire[18]=0x10;this.memoire[19]= (byte) 0xF0; // 3
+        this.memoire[15]= (byte) 0xF0;this.memoire[16]= (byte) 0x10;this.memoire[17]= (byte) 0xF0;this.memoire[18]= (byte)0x10;this.memoire[19]= (byte) 0xF0; // 3
 
-        this.memoire[20]= (byte) 0x90;this.memoire[21]= (byte) 0x90;this.memoire[22]= (byte) 0xF0;this.memoire[23]=0x10;this.memoire[24]=0x10; // 4
+        this.memoire[20]= (byte) 0x90;this.memoire[21]= (byte) 0x90;this.memoire[22]= (byte) 0xF0;this.memoire[23]=(byte) 0x10;this.memoire[24]=(byte)0x10; // 4
 
-        this.memoire[25]= (byte) 0xF0;this.memoire[26]= (byte) 0x80;this.memoire[27]= (byte) 0xF0;this.memoire[28]=0x10;this.memoire[29]= (byte) 0xF0; // 5
+        this.memoire[25]= (byte) 0xF0;this.memoire[26]= (byte) 0x80;this.memoire[27]= (byte) 0xF0;this.memoire[28]= (byte) 0x10;this.memoire[29]= (byte) 0xF0; // 5
 
         this.memoire[30]= (byte) 0xF0;this.memoire[31]= (byte) 0x80;this.memoire[32]= (byte) 0xF0;this.memoire[33]= (byte) 0x90;this.memoire[34]= (byte) 0xF0; // 6
 
-        this.memoire[35]= (byte) 0xF0;this.memoire[36]=0x10;this.memoire[37]=0x20;this.memoire[38]=0x40;this.memoire[39]=0x40; // 7
+        this.memoire[35]= (byte) 0xF0;this.memoire[36]= (byte)0x10;this.memoire[37]= (byte) 0x20;this.memoire[38]= (byte) 0x40;this.memoire[39]=(byte)0x40; // 7
 
         this.memoire[40]= (byte) 0xF0;this.memoire[41]= (byte) 0x90;this.memoire[42]= (byte) 0xF0;this.memoire[43]= (byte) 0x90;this.memoire[44]= (byte) 0xF0; // 8
 
-        this.memoire[45]= (byte) 0xF0;this.memoire[46]= (byte) 0x90;this.memoire[47]= (byte) 0xF0;this.memoire[48]=0x10;this.memoire[49]= (byte) 0xF0; // 9
+        this.memoire[45]= (byte) 0xF0;this.memoire[46]= (byte) 0x90;this.memoire[47]= (byte) 0xF0;this.memoire[48]= (byte) 0x10;this.memoire[49]= (byte) 0xF0; // 9
 
         this.memoire[50]= (byte) 0xF0;this.memoire[51]= (byte) 0x90;this.memoire[52]= (byte) 0xF0;this.memoire[53]= (byte) 0x90;this.memoire[54]= (byte) 0x90; // A
 
@@ -79,9 +83,25 @@ public class CPU {
         ecran.paintScreen();
     }
 
-    public void start() {
+
+    public void chargerJeu() throws IOException {
+        byte[] bytes = Files.readAllBytes(Paths.get("roms/MAZE.ch8"));
+        short currentAddress = (short)0x200;
+        int loadedBytes = 0;
+        for(byte b: bytes){
+            memoire[currentAddress] = b;
+            loadedBytes++;
+            currentAddress = (short)(currentAddress +0x1);
+
+        }
+        System.out.println("[INFO] ROM \" Maze \" loaded in memory starting at 0x200 ("+loadedBytes+" Bytes).");
+
+    }
+
+    public void start() throws IOException {
 
         prepareGUI();
+        chargerJeu();
         do {
             this.initTime = System.nanoTime();
 
@@ -101,7 +121,6 @@ public class CPU {
     private void waitForCompleteCycle(long endTime, long initTime){
 
         long nanosToWait= 16000000 - (endTime - initTime);
-        System.out.println(nanosToWait);
         long initNanos = System.nanoTime();
         long targetNanos = initNanos + nanosToWait;
         while(System.nanoTime()<targetNanos){
@@ -131,7 +150,7 @@ public class CPU {
         byte action;
         short resultat;
 
-        for(action=0; action< 35; action++){
+        for(action=0; action< 34; ++action){
             resultat = (short) (jump.getMasque()[action] & opcode);
 
             if(resultat == jump.getId()[action]) {
@@ -150,6 +169,8 @@ public class CPU {
         b1= (byte) (opcode&(0x000F));     //on prend les 4 bits de poids faible
 
         b4 = recupererAction(opcode);
+
+        System.out.println(b1+ " "+ b2+ " "+ b3+ " "+ b4);
 
         switch(b4) {
             case 0: {
@@ -334,7 +355,7 @@ public class CPU {
             case 22:{
 
                 //CXNN définit VX à un nombre aléatoire inférieur à NN.
-                V[b3] = (byte) ((byte)random.nextInt(266) % b2<<4 + b1);
+                V[b3] = (byte)0xBA;
                 break;
 
             }
@@ -438,7 +459,7 @@ public class CPU {
             }
 
             default: {//si ça arrive, il y un truc qui cloche
-
+                System.out.println("coucou");
                 break;
             }
 

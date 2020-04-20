@@ -1,4 +1,5 @@
 import javax.swing.*;
+import java.io.IOException;
 
 public class Chip8 {
 
@@ -11,7 +12,7 @@ public class Chip8 {
         this.CPU = new CPU(ecran);
     }
 
-    public void start() {
+    public void start() throws IOException {
         CPU.start();
     }
 
