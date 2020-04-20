@@ -10,7 +10,7 @@ public class Ecran extends JPanel {
     private int width = 64 * scale;
     private int height = 32 * scale;
 
-    public boolean[][] pixels;
+    private boolean[][] pixels;
 
     public Ecran(boolean[][] pixels) {
         this.pixels = pixels;
@@ -48,6 +48,10 @@ public class Ecran extends JPanel {
         updateEcran();
     }
 
+    public void setPixels(boolean value, int x,int y) {
+        this.pixels[x][y] = value;
+    }
+
     public void paintScreen() {
         repaint();
     }
@@ -63,4 +67,7 @@ public class Ecran extends JPanel {
         updateEcran();
     }
 
+    public boolean getPixel(byte x, byte y) {
+        return this.pixels[x][y];
+    }
 }
