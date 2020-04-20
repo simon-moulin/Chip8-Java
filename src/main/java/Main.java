@@ -1,6 +1,9 @@
+import javax.swing.*;
+
 public class Main {
 
     public static void main(String[] args) {
-        System.out.println("Coucou");
+        Chip8 c = new Chip8(new Ecran(new boolean[64][32]), new CPU());
+        c.start();
     }
 }
