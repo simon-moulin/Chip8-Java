@@ -85,7 +85,7 @@ public class CPU {
 
 
     public void chargerJeu() throws IOException {
-        byte[] bytes = Files.readAllBytes(Paths.get("roms/MAZE.ch8"));
+        byte[] bytes = Files.readAllBytes(Paths.get("roms/test_opcode.ch8"));
         short currentAddress = (short)0x200;
         int loadedBytes = 0;
         for(byte b: bytes){
@@ -150,7 +150,7 @@ public class CPU {
         byte action;
         short resultat;
 
-        for(action=0; action< 34; ++action){
+        for(action=0; action< 34; action++){
             resultat = (short) (jump.getMasque()[action] & opcode);
 
             if(resultat == jump.getId()[action]) {
@@ -170,7 +170,7 @@ public class CPU {
 
         b4 = recupererAction(opcode);
 
-        System.out.println(b1+ " "+ b2+ " "+ b3+ " "+ b4);
+        System.out.println( b4+ " " +b3+ " "+ b2+ " "+ b1);
 
         switch(b4) {
             case 0: {
@@ -211,8 +211,8 @@ public class CPU {
             }
             case 5:{//3XNN saute l'instruction suivante si VX est égal à NN.
 
-                if(V[b3] == (b2<<4) + b1) {
-                    pc -=2;
+                if(V[b3] == ((b2<<4) + b1)) {
+                    pc +=2;
                 }
 
 
@@ -355,7 +355,7 @@ public class CPU {
             case 22:{
 
                 //CXNN définit VX à un nombre aléatoire inférieur à NN.
-                V[b3] = (byte)0xBA;
+                V[b3] = (byte) ((byte) random.nextInt(266) & ((b2<<4) +b1));
                 break;
 
             }
