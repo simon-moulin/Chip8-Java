@@ -85,7 +85,7 @@ public class CPU {
 
 
     public void chargerJeu() throws IOException {
-        byte[] bytes = Files.readAllBytes(Paths.get("roms/test_opcode.ch8"));
+        byte[] bytes = Files.readAllBytes(Paths.get("roms/C8PIC.ch8"));
         short currentAddress = (short)0x200;
         int loadedBytes = 0;
         for(byte b: bytes){
@@ -309,9 +309,9 @@ public class CPU {
                 //8XY7 VX = VY - VX. VF est mis à 0 quand il y a un emprunt et à 1 quand il n'y en a pas.
 
                 if((V[b2] < V[b3])) {
-                    V[0xF] = 1;
-                }else {
                     V[0xF] = 0;
+                }else {
+                    V[0xF] = 1;
                 }
 
                 V[b3] = (byte) (V[b2] - V[b3]);
@@ -458,8 +458,7 @@ public class CPU {
                 break;
             }
 
-            default: {//si ça arrive, il y un truc qui cloche
-                System.out.println("coucou");
+            default: {
                 break;
             }
 
