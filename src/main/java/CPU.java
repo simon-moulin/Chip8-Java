@@ -85,7 +85,7 @@ public class CPU {
 
 
     public void chargerJeu() throws IOException {
-        byte[] bytes = Files.readAllBytes(Paths.get("roms/C8PIC.ch8"));
+        byte[] bytes = Files.readAllBytes(Paths.get("roms/INVADERS"));
         short currentAddress = (short)0x200;
         int loadedBytes = 0;
         for(byte b: bytes){
@@ -143,14 +143,15 @@ public class CPU {
     }
 
     public short recupererOpcode(){
-        return (short) ((this.memoire[this.pc]<<8)+this.memoire[this.pc+1]);
+        //0x00FF is neccesary or Java puts FF instead of 00's !!
+        return (short) ((this.memoire[this.pc]<<8) | this.memoire[this.pc+1] & 0x00FF);
     }
 
     private byte recupererAction(short opcode) {
         byte action;
         short resultat;
 
-        for(action=0; action< 34; action++){
+        for(action=0; action< 35; action++){
             resultat = (short) (jump.getMasque()[action] & opcode);
 
             if(resultat == jump.getId()[action]) {
@@ -170,7 +171,7 @@ public class CPU {
 
         b4 = recupererAction(opcode);
 
-        System.out.println( b4+ " " +b3+ " "+ b2+ " "+ b1);
+        //System.out.println( b4+ " " +b3+ " "+ b2+ " "+ b1);
 
         switch(b4) {
             case 0: {
@@ -192,7 +193,7 @@ public class CPU {
                 break;
             }
             case 3: { //1NNN : effectue un saut à l'adresse 1NNN
-                pc= (short) ((b3<<8)+(b2<<4)+b1);
+                pc= (short) (((b3<<8)+(b2<<4)+b1) & 0xFFF);
                 pc-=2;
                 break;
             }
@@ -203,7 +204,7 @@ public class CPU {
                 if(nbSaut< 15) {
                     nbSaut++;
                 }
-                pc= (short) ((b3<<8)+(b2<<4)+b1); //on prend le nombre NNN (pour le saut)
+                pc= (short) ((short) ((b3<<8)+(b2<<4)+b1)&0xFFF); //on prend le nombre NNN (pour le saut)
                 pc-=2; //n'oublions pas le pc+=2 à la fin du block switch
 
 
@@ -211,7 +212,9 @@ public class CPU {
             }
             case 5:{//3XNN saute l'instruction suivante si VX est égal à NN.
 
-                if(V[b3] == ((b2<<4) + b1)) {
+                byte prov = (byte) (((b2<<4) + b1) & 0xFF);
+
+                if(V[b3] == prov) {
                     pc +=2;
                 }
 
@@ -219,7 +222,8 @@ public class CPU {
                 break;
             }
             case 6:{//4XNN saute l'instruction suivante si VX et NN ne sont pas égaux.
-                if(V[b3] != (b2<<4+ b1)) {
+                byte prov = (byte) (((b2<<4) + b1) & 0xFF);
+                if(V[b3] != prov) {
                     pc +=2;
                 }
 
@@ -238,14 +242,15 @@ public class CPU {
             case 8:{
                 //6XNN définit VX à NN.
 
-                V[b3] = (byte) ((b2 <<4) + b1);
+                byte prov = (byte) (((b2<<4) + b1) & 0xFF);
+                V[b3] = prov;
 
                 break;
             }
             case 9:{
                 //7XNN ajoute NN à VX.
 
-                V[b3] += (b2<< 4) + b1;
+                V[b3] += (byte) ((b2<<4) + b1);
 
                 break;
             }
@@ -274,26 +279,41 @@ public class CPU {
             }
             case 14:{
                 //8XY4 ajoute VY à VX. VF est mis à 1 quand il y a un dépassement de mémoire (carry), et à 0 quand il n'y en pas.
-                if((V[b3] + V[b2]) > 255) {
-                    V[0xF] = 1;
-                }else {
-                    V[0xF] = 0;
+                byte result = (byte)(V[b3] + V[b2]);
+
+                //Java treats all bytes as signed. With this, we have an unsigned int.
+                //These three ints are used to check for overflow
+                int int_result = (result & 0xff);
+                int int_vy = (V[b2]& 0xff);
+                int int_vx = (V[b3]& 0xff);
+
+                //Check overflow, if result is less than one of the parameters
+                if(int_result <  int_vy || int_result < int_vx){
+                    V[0xF] = (byte)0x1;
                 }
-                V[b3] += V[b2];
+                else{
+                    V[0xF] = (byte)0x0;
+                }
+
+                V[b3] =result;
 
                 break;
             }
             case 15:{
                 //8XY5 VY est soustraite de VX. VF est mis à 0 quand il y a un emprunt, et à 1 quand il n'y a en pas.
-                if((V[b3]<V[b2]))
-                {
-                    V[0xF]=0; //cpu.V[15]
+                byte result = (byte)(V[b2] - V[b3]);
+
+                int int_vy = (V[b2]& 0xff);
+                int int_vx = (V[b3]& 0xff);
+
+                if(int_vx > int_vy){
+                    V[0xF] = 0x1;
                 }
-                else
-                {
-                    V[0xF]=1; //cpu.V[15]
+                else{
+                    V[0xF] = 0x0;
                 }
-                V[b3]-=V[b2];
+
+                V[b3] = result;
 
                 break;
             }
@@ -301,27 +321,50 @@ public class CPU {
 
                 //8XY6 décale (shift) VX à droite de 1 bit. VF est fixé à la valeur du bit de poids faible de VX avant le décalage.
                 V[0xF]= (byte) (V[b3]&(0x01));
-                V[b3]= (byte) (V[b3]>>1);
+                int int_vx = (V[b3]&0xFF);
+                V[b3]= (byte) (int_vx>>>1);
 
                 break;
             }
             case 17:{
                 //8XY7 VX = VY - VX. VF est mis à 0 quand il y a un emprunt et à 1 quand il n'y en a pas.
+                byte y = b2;
+                byte x = b3;
 
-                if((V[b2] < V[b3])) {
-                    V[0xF] = 0;
-                }else {
-                    V[0xF] = 1;
+                byte result = (byte)(V[y] - V[x]);
+
+                int int_vy = (V[y]& 0xff);
+                int int_vx = (V[x]& 0xff);
+
+                if(int_vy > int_vx){
+                    V[0xF] = 0x1;
+                }
+                else{
+                    V[0xF] = 0x0;
                 }
 
-                V[b3] = (byte) (V[b2] - V[b3]);
+                V[x] = result;
 
                 break;
             }
             case 18:{
                 //8XYE décale (shift) VX à gauche de 1 bit. VF est fixé à la valeur du bit de poids fort de VX avant le décalage.
-                V[0xF]= (byte) (V[b3]>>7);
-                V[b3]= (byte) (V[b3]<<1);
+                byte y = b2;
+                byte x = b3;
+
+
+                byte mostSignificant = (byte)(V[x] & 0x80);
+                if(mostSignificant!=0){
+                    //If 0x10000000 -> set to 0x01
+                    mostSignificant = (byte)0x01;
+                }
+                V[0xF] = mostSignificant; //Set VF to the least significant bit of Vx before the shift.
+
+
+                //We have to cast it to unsigned int to work properly. If we don't do it, Bitwise operation does the cast
+                //with sign, so the result is incorrect.
+                int int_vx = (V[x]&0xFF);
+                V[x] = (byte) (int_vx << 1); // >>> operator means right shift one bit without sign propagation.
 
                 break;
             }
@@ -338,7 +381,7 @@ public class CPU {
             }
             case 20:{
                 //ANNN affecte NNN à I.
-                I = (short) ((b3 << 8) + (b2 << 4) + b1);
+                I = (short) (((b3 << 8) + (b2 << 4) + b1) & 0xFFF);
 
 
                 break;
@@ -346,7 +389,9 @@ public class CPU {
             case 21:{
                 //BNNN passe à l'adresse NNN + V0.
 
-                pc= (short) ((b3<<8)+(b2<<4)+b1+V[0]);
+                int int_v0 = V[0] & 0xff; //Unsigned
+                int int_nnn = (b3<<8)+(b2<<4)+b1 & 0xfff; //unsigned
+                pc= (short) (int_nnn + int_v0);
                 pc-=2;
 
                 break;
@@ -363,7 +408,7 @@ public class CPU {
             case 23:{
                 //DXYN dessine un sprite aux coordonnées (VX, VY).
 
-                dessinerEcran(b1,b2,b3);
+                dessinerEcran(b1, b2,b3);
 
                 break;
 
@@ -408,15 +453,10 @@ public class CPU {
             }
             case 30:{
                 //FX1E ajoute à VX I. VF est mis à 1 quand il y a overflow (I+VX>0xFFF), et à 0 si tel n'est pas le cas.
-                if((I+V[b3])>0xFFF)
-                {
-                    V[0xF]=1;
-                }
-                else
-                {
-                    V[0xF]=0;
-                }
-                I+=V[b3];
+                int int_vx = V[b3] & 0xFF; //Unsigned
+                int int_i = I & 0xFFFF; //Unsigned
+
+                I = (short)(int_vx + int_i);
 
                 break;
             }
@@ -431,9 +471,19 @@ public class CPU {
             case 32:{
                 //FX33 stocke dans la mémoire le code décimal représentant VX (dans I, I+1, I+2).
 
-                memoire[I]= (byte) ((V[b3]-V[b3]%100)/100); //stocke les centaines
-                memoire[I+1]= (byte) (((V[b3]-V[b3]%10)/10)%10);//les dizaines
-                memoire[I+2]= (byte) (V[b3]-memoire[I]*100-memoire[I+1]*10);//les unités
+                int int_vx = V[b3] & 0xff;
+
+                int hundreds = int_vx / 100; //Calculate hundreds
+                int_vx = int_vx - hundreds*100;
+
+                int tens = int_vx/10; //Calculate tens
+                int_vx = int_vx - tens*10;
+
+                int units = int_vx; //Calculate units
+
+                memoire[I]= (byte) (hundreds); //stocke les centaines
+                memoire[I+1]= (byte) (tens);//les dizaines
+                memoire[I+2]= (byte) (units);//les unités
 
                 break;
             }
@@ -476,18 +526,21 @@ public class CPU {
         {
             codage=memoire[I+k];//on récupère le codage de la ligne à dessiner
 
-            y= (byte) ((V[b2]+k)%32);//on calcule l'ordonnée de la ligne à dessiner, on ne doit pas dépasser L
+            int int_x = V[b3] & 0xFF;
+            int int_y = V[b2] & 0xFF;
+            y= (byte) ((int_y+k)%32);//on calcule l'ordonnée de la ligne à dessiner, on ne doit pas dépasser L
 
             for(j=0,decalage=7;j<8;j++,decalage--)
             {
-                x= (byte) ((V[b3]+j)%64); //on calcule l'abscisse, on ne doit pas dépasser l
+                x= (byte) ((int_x+j)%64); //on calcule l'abscisse, on ne doit pas dépasser l
+
 
                 if(((codage)&(0x1<<decalage))!=0)//on récupère le bit correspondant
                 {   //si c'est blanc
                     if(ecran.getPixel(x, y))// On eteint
                     {
                         ecran.setPixels(false, x,y);
-                        V[0xF]=1; //il y a donc collusion
+                        V[0xF]=1; //il y a donc collision
 
                     }
                     else //sinon

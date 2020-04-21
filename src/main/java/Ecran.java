@@ -45,7 +45,6 @@ public class Ecran extends JPanel {
                 pixels[i][j] = false;
             }
         }
-        updateEcran();
     }
 
     public void setPixels(boolean value, int x,int y) {
