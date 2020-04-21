@@ -22,6 +22,7 @@ public class CPU {
     private long endTime;
     private long initTime;
     private Son son;
+    private Clavier c;
 
     public CPU (Ecran ecran){
         this.memoire = new byte[4096];
@@ -35,6 +36,7 @@ public class CPU {
         this.I = 0;
         this.ecran = ecran;
         this.random = new Random();
+        this.c = new Clavier();
 
         this.jump = new Jump();
         son = new Son("son/buzz.wav");
@@ -82,12 +84,13 @@ public class CPU {
         f.add(this.ecran);
         f.pack();
         f.setVisible(true);
+        f.addKeyListener(c);
         ecran.paintScreen();
     }
 
 
     public void chargerJeu() throws IOException {
-        byte[] bytes = Files.readAllBytes(Paths.get("roms/UFO"));
+        byte[] bytes = Files.readAllBytes(Paths.get("roms/INVADERS"));
         short currentAddress = (short)0x200;
         int loadedBytes = 0;
         for(byte b: bytes){
@@ -422,13 +425,18 @@ public class CPU {
             }
             case 24:{
                 //EX9E saute l'instruction suivante si la clé stockée dans VX est pressée.
-
+                if(c.pressed[V[b3]]) {
+                    pc+=2;
+                }
 
                 break;
             }
             case 25:{
                 //EXA1 saute l'instruction suivante si la clé stockée dans VX n'est pas pressée.
 
+                if(!c.pressed[V[b3]]) {
+                    pc+=2;
+                }
                 break;
             }
 
@@ -441,7 +449,15 @@ public class CPU {
             case 27:{
                 //FX0A attend l'appui sur une touche et la stocke ensuite dans VX.
 
-
+                boolean press = false;
+                while (!press) {
+                    for (int i = 0; i < c.pressed.length; i++) {
+                        if(c.pressed[i]) {
+                            press = true;
+                            V[b3] = (byte) i;
+                        }
+                    }
+                }
                 break;
             }
 
