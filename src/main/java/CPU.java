@@ -8,14 +8,14 @@ import java.util.Random;
 
 public class CPU {
 
-    private byte[] memoire;
+    private byte[] memoire; //Memoire
     private byte[] V; // registe
     private short I; // stocke une adresse memoire
-    private short[] saut; //pile
-    private byte nbSaut;
+    private short[] saut; //stack
+    private byte nbSaut; // stack pointer (SP)
     private byte compteurJeu;
     private byte compteurSon;
-    private short pc;
+    private short pc; // Process counter (PC)
     private Jump jump;
     private Ecran ecran;
     private Random random ;
@@ -75,7 +75,7 @@ public class CPU {
     }
 
     private void prepareGUI(){
-        JFrame f = new JFrame("CHIP-8 emulator");
+        JFrame f = new JFrame("Emulateur CHIP-8 par Simon Moulin");
         f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         f.add(this.ecran);
         f.pack();
@@ -120,7 +120,7 @@ public class CPU {
 
     private void waitForCompleteCycle(long endTime, long initTime){
 
-        long nanosToWait= 16000000 - (endTime - initTime);
+        long nanosToWait= 32000000 - (endTime - initTime);
         long initNanos = System.nanoTime();
         long targetNanos = initNanos + nanosToWait;
         while(System.nanoTime()<targetNanos){
