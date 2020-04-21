@@ -21,6 +21,7 @@ public class CPU {
     private Random random ;
     private long endTime;
     private long initTime;
+    private Son son;
 
     public CPU (Ecran ecran){
         this.memoire = new byte[4096];
@@ -36,6 +37,7 @@ public class CPU {
         this.random = new Random();
 
         this.jump = new Jump();
+        son = new Son("son/buzz.wav");
         chargerFont();
     }
     private void chargerFont()
@@ -85,7 +87,7 @@ public class CPU {
 
 
     public void chargerJeu() throws IOException {
-        byte[] bytes = Files.readAllBytes(Paths.get("roms/INVADERS"));
+        byte[] bytes = Files.readAllBytes(Paths.get("roms/UFO"));
         short currentAddress = (short)0x200;
         int loadedBytes = 0;
         for(byte b: bytes){
@@ -112,6 +114,11 @@ public class CPU {
             }
             ecran.paintScreen();
             decompter();
+            if(compteurSon!=0)
+            {
+                son.play(); //permet de jouer le bip sonore
+                compteurSon=0;
+            }
             endTime = System.nanoTime();
             waitForCompleteCycle(endTime,initTime);
         } while (true);
@@ -120,7 +127,7 @@ public class CPU {
 
     private void waitForCompleteCycle(long endTime, long initTime){
 
-        long nanosToWait= 32000000 - (endTime - initTime);
+        long nanosToWait= 16000000 - (endTime - initTime);
         long initNanos = System.nanoTime();
         long targetNanos = initNanos + nanosToWait;
         while(System.nanoTime()<targetNanos){
